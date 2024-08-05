@@ -1,4 +1,7 @@
 #include <SoftwareSerial.h>
+#include <Servo.h>. 
+
+Servo myServoHead; 
 
 SoftwareSerial HC06(A0, A1);  // RX, TX
 char BT_value;
@@ -8,6 +11,7 @@ volatile boolean Flag = true;
 
 const int Trig = A3;
 const int Echo = A2;
+const int ServoHead = 10;
 const int PWM2A = 11;      //M1 motor
 const int PWM2B = 3;       //M2 motor
 const int PWM0A = 6;       //M3 motor
@@ -37,6 +41,8 @@ int Speed1 = 255;
 int Speed2 = 255;
 int Speed3 = 255;
 int Speed4 = 255;
+int indexHead = 15;
+bool isIncrease = true;
 
 void Motor(int Dir, int Speed1, int Speed2, int Speed3, int Speed4) {
   analogWrite(PWM2A, Speed1);  //Motor PWM speed regulation
@@ -94,7 +100,6 @@ void Ultrasonic_Avoidance() {
       Motor(Stop, 0, 0, 0, 0);
       delay(250);
     }
-
   } else {
     Motor(Move_Forward, 100, 100, 100, 100);
   }
@@ -112,6 +117,24 @@ void Ultrasonic_Follow() {
     Motor(Move_Forward, 170, 170, 170, 170);
     delay(20);
   }
+}
+
+void AutomaticHead() {
+  if(indexHead<=165 && isIncrease == true){
+    indexHead++;
+    myServoHead.write(indexHead);
+    delay(30);
+  }else if(indexHead>15 && isIncrease == false){
+    indexHead--;
+    myServoHead.write(indexHead);
+    delay(30);
+  }
+  if(indexHead == 15){
+      isIncrease = true;
+  }else if(indexHead == 165){
+      isIncrease = false;
+  }
+  Serial.println(indexHead);
 }
 
 void setup() {
@@ -133,24 +156,25 @@ void setup() {
   pinMode(PWM2B, OUTPUT);
   pinMode(Trig, OUTPUT);
   pinMode(Echo, INPUT);
+  myServoHead.attach(ServoHead);
+  myServoHead.write(indexHead);
 }
 
 void loop() {
   while (true) {
     while (HC06.available() > 0) {
       char receive = HC06.read();
-      if (receive == 'T') {
-        BT_value = receive;
-      }
-      if (receive == 'S') {
-        BT_value = receive;
-      }
+      BT_value = receive; 
     }
+    
     if(BT_value == 'T'){
+       myServoHead.write(90);
        Ultrasonic_Avoidance();
     }
+    
     if(BT_value == 'S'){
        Motor(Stop, 0, 0, 0, 0);
+       AutomaticHead();
     }
   }
 }
